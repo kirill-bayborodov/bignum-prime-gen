@@ -10,7 +10,7 @@
 #ifndef BIGNUM_PRIME_GEN_BENCHMARK_ADAPTER_H
 #define BIGNUM_PRIME_GEN_BENCHMARK_ADAPTER_H
 
-#include <benchmark_core.h>
+#include <benchmark_framework.h>
 
 #ifdef __cplusplus
 extern "C" {

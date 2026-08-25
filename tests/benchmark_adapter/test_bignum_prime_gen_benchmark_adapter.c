@@ -13,7 +13,7 @@
 #include <string.h>
 
 #include <bignum.h>
-#include <benchmark_core.h>
+#include <benchmark_framework.h>
 
 #include "bignum_prime_gen_benchmark_adapter.h"
 

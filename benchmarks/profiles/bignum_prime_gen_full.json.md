@@ -2,7 +2,7 @@
 
 ## Назначение
 
-`bignum_prime_gen_full.json` — расширенная domain-specific matrix для анализа производительности in-place left shift. Она предназначена для подготовленного controlled run, а не для быстрого CI smoke. Manifest сохраняет все meaningful bignum axes: zero/mixed input, zero/bit/word/combined/random/mixed shift amount, operand word length, measurement boundary and near-capacity state.
+`bignum_prime_gen_full.json` — расширенная domain-specific matrix для анализа производительности генерации простых чисел заданной битовой длины. Она предназначена для подготовленного controlled run, а не для быстрого CI smoke. Manifest сохраняет meaningful workload axes: random/mixed input metadata, exact `prime-gen` operation, candidate bit length, measurement boundary and near-capacity state.
 
 The C11 `bench_matrix` runner from pinned `benchmark-framework v1.0.0` accepts the JSON document and launches project-owned ST/MT bignum adapter binaries. The runner writes a raw samples document; the C11 `benchmark_stats` tool parses it through public `json-lib` and emits a metrics/regression summary.
 
@@ -10,13 +10,12 @@ The C11 `bench_matrix` runner from pinned `benchmark-framework v1.0.0` accepts t
 
 | Family | Profiles | What it isolates |
 |---|---:|---|
-| Zero path | 1 | No-op left shift over a zero source record |
-| One-word paths | 2 | Zero and sub-word shifts without length expansion |
-| Quarter/half lengths | 4 | Bit, word and combined shift costs at bounded multi-word sizes |
-| Variable/mixed | 2 | Reproducible randomized and branch-diverse workload behavior |
-| Near-capacity | 3 | Valid growth near storage capacity for bit and word shifts |
+| Tiny/small candidates | 3 | Low-cost prime generation at 32 and 64 bits |
+| Medium/large candidates | 4 | Prime generation cost at 256 and 1024 bits |
+| Variable candidates | 2 | Reproducible variable bit-length workload behavior |
+| Near-capacity | 2 | Safe upper-bound candidate generation within bignum capacity |
 
-The document declares **12 profiles**. A run with `R` repetitions therefore produces `12 × 2 × R` samples: one ST and one MT process per profile/repetition.
+The document declares **11 profiles**. A run with `R` repetitions therefore produces `11 × 2 × R` samples: one ST and one MT process per profile/repetition.
 
 ## Controlled full run
 
@@ -64,13 +63,10 @@ A `regression:true` field means the candidate median exceeded both the configure
 
 ## Bignum transport vocabulary
 
-`operation_kind` must begin with `prime-`. It is not legal to substitute generic example values such as `xor` or `rotate`. The adapter validates these values before it initializes bignum state, therefore malformed profiles fail before their data become benchmark samples.
+`operation_kind` is exactly `prime-gen`. Generic example values such as `xor` or `rotate` are not legal for this adapter. The adapter validates this token before it initializes bignum state, therefore malformed profiles fail before their data become benchmark samples.
 
-| `operation_kind` | Adapter shift path |
+| `operation_kind` | Adapter behavior |
 |---|---|
-| `prime-zero` | Always zero shift amount |
-| `prime-bit` | Deterministic representable sub-word amount |
-| `prime-word` | Deterministic representable whole-word amount |
-| `prime-combined` | Deterministic representable whole-word-plus-bit amount |
-| `prime-random` | Deterministic representable amount derived from seed/iteration |
-| `prime-mixed` | Stable rotation through zero, bit, word and combined paths |
+| `prime-gen` | Generates a candidate prime at the profile-selected bit length |
+
+The adapter accepts `size_profile` values `tiny`, `small`, `medium`, `large` and `variable`; `capacity_profile` remains `normal` or `near-capacity`. The `input_kind` values `random` and `mixed` describe deterministic workload metadata and do not replace the cryptographic candidate generation performed by the operation.
