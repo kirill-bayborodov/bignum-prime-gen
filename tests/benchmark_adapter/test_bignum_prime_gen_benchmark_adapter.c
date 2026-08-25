@@ -1,0 +1,170 @@
+/**
+ * @file test_bignum_prime_gen_benchmark_adapter.c
+ * @brief Deterministic unit tests for the bignum_prime_gen benchmark-core adapter.
+ *
+ * @details
+ * The tests verify the public project-owned adapter contract without launching
+ * a timed benchmark. They cover valid transport mapping, invalid/null inputs,
+ * deterministic state initialization, successful in-place bignum operation,
+ * and non-zero observable checksum creation.
+ */
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <bignum.h>
+#include <benchmark_core.h>
+
+#include "bignum_prime_gen_benchmark_adapter.h"
+
+/**
+ * @brief Named outcomes returned by deterministic adapter test helpers.
+ */
+typedef enum {
+    BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS = 0, /**< The test helper's assertions succeeded. */
+    BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE = 1 /**< An observed adapter outcome differed from its contract. */
+} bignum_prime_gen_adapter_test_status_t;
+
+/**
+ * @brief Construct a valid baseline bignum workload descriptor.
+ * @param[out] workload Receives a complete immutable test workload.
+ * @return A named bignum_prime_gen_adapter_test_status_t result.
+ *
+ * @details
+ * The helper initializes every transport axis with a valid bignum-specific
+ * value. The constant seed and small data count model a reproducible matrix
+ * smoke configuration rather than a performance measurement configuration.
+ */
+static bignum_prime_gen_adapter_test_status_t bignum_prime_gen_adapter_test_make_workload(
+    benchmark_workload_t *workload)
+{
+    if (workload == NULL) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    *workload = (benchmark_workload_t){
+        .data_mode = "custom", /**< Adapter profile is explicitly selected. */
+        .input_kind = "random", /**< Generate random prime candidates. */
+        .operation_kind = "prime-gen", /**< Exercise prime generation. */
+        .measure_mode = "kernel-only", /**< Exclude preparation copies from timed work. */
+        .size_profile = "small", /**< Generate a 64-bit candidate workload. */
+        .capacity_profile = "normal", /**< Avoid boundary capacity pressure. */
+        .seed = UINT64_C(11400714819323198485), /**< Stable deterministic source seed. */
+        .warmup = UINT64_C(5), /**< Small unmeasured lifecycle warm-up count. */
+        .data_count = 16U /**< Small deterministic cyclic source dataset. */
+    };
+    return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Test accepted and rejected bignum transport vocabularies.
+ * @return A named bignum_prime_gen_adapter_test_status_t result.
+ *
+ * @details
+ * The algorithm validates a known-good workload, changes only operation_kind
+ * to a generic byte-transform value, and verifies that the public validator
+ * rejects it. It also verifies the documented NULL argument status.
+ */
+static bignum_prime_gen_adapter_test_status_t bignum_prime_gen_adapter_test_validation(void)
+{
+    benchmark_workload_t workload;
+    benchmark_workload_t invalid_workload;
+
+    if (bignum_prime_gen_adapter_test_make_workload(&workload) !=
+        BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (bignum_prime_gen_benchmark_validate_workload(&workload) !=
+        BIGNUM_PRIME_GEN_BENCHMARK_SUCCESS) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    invalid_workload = workload;
+    invalid_workload.operation_kind = "xor";
+    if (bignum_prime_gen_benchmark_validate_workload(&invalid_workload) !=
+        BIGNUM_PRIME_GEN_BENCHMARK_INVALID_PROFILE) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (bignum_prime_gen_benchmark_validate_workload(NULL) !=
+        BIGNUM_PRIME_GEN_BENCHMARK_NULL_ARGUMENT) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Test adapter callback construction and one deterministic operation lifecycle.
+ * @return A named bignum_prime_gen_adapter_test_status_t result.
+ *
+ * @details
+ * The helper builds the public benchmark-core binding, initializes one state
+ * from the baseline workload, invokes the measured operation callback, and
+ * obtains its observable checksum. It repeats initialization with the same
+ * sequence index and compares complete bignum_t records for reproducibility.
+ */
+static bignum_prime_gen_adapter_test_status_t bignum_prime_gen_adapter_test_callbacks(void)
+{
+    benchmark_adapter_t adapter;
+    benchmark_workload_t workload;
+    unsigned char first_state[1024];
+    unsigned char second_state[1024];
+    uint64_t checksum;
+
+    if (bignum_prime_gen_benchmark_adapter_init(NULL) !=
+        BIGNUM_PRIME_GEN_BENCHMARK_NULL_ARGUMENT) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (bignum_prime_gen_benchmark_adapter_init(&adapter) !=
+        BIGNUM_PRIME_GEN_BENCHMARK_SUCCESS || adapter.initialize == NULL ||
+        adapter.operation == NULL || adapter.checksum == NULL ||
+        adapter.state_size > sizeof(first_state)) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (bignum_prime_gen_adapter_test_make_workload(&workload) !=
+        BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (adapter.initialize(&first_state, UINT64_C(3), &workload, adapter.adapter_context) !=
+        BENCHMARK_ADAPTER_STATUS_SUCCESS ||
+        adapter.initialize(&second_state, UINT64_C(3), &workload, adapter.adapter_context) !=
+        BENCHMARK_ADAPTER_STATUS_SUCCESS) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (adapter.state_size == 0U) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (memcmp(first_state, second_state, adapter.state_size) != 0) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    if (adapter.operation(first_state, UINT64_C(7), &workload, adapter.adapter_context) !=
+        BENCHMARK_ADAPTER_STATUS_SUCCESS) {
+        return BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE;
+    }
+    checksum = adapter.checksum(first_state, UINT64_C(7), adapter.adapter_context);
+    return checksum == 0U
+        ? BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_FAILURE
+        : BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS;
+}
+
+/**
+ * @brief Run all deterministic adapter assertions.
+ * @return EXIT_SUCCESS when all named test helpers succeed; EXIT_FAILURE otherwise.
+ *
+ * @details
+ * ISO C main is the sole function returning int. It invokes each test helper
+ * sequentially, prints a concise diagnostic on the first failure, and keeps
+ * every non-main project function within the named-status convention.
+ */
+int main(void)
+{
+    if (bignum_prime_gen_adapter_test_validation() !=
+        BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS) {
+        fputs("bignum_prime_gen benchmark adapter validation test failed\n", stderr);
+        return 1;
+    }
+    if (bignum_prime_gen_adapter_test_callbacks() !=
+        BIGNUM_PRIME_GEN_ADAPTER_TEST_STATUS_SUCCESS) {
+        fputs("bignum_prime_gen benchmark adapter callback test failed\n", stderr);
+        return 1;
+    }
+    puts("bignum_prime_gen benchmark adapter tests: OK");
+    return 0;
+}
