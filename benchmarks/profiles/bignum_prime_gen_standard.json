@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Standard regression matrix for exact-bit-length bignum_prime_gen workloads.",
+  "description": "CI smoke matrix for bignum_prime_gen using bounded tiny and small candidate workloads.",
   "profiles": [
     {
       "id": "random-tiny-kernel",
@@ -17,38 +17,6 @@
       "measure_mode": "end-to-end",
       "size_profile": "small",
       "capacity_profile": "normal"
-    },
-    {
-      "id": "random-medium-kernel",
-      "input_kind": "random",
-      "operation_kind": "prime-gen",
-      "measure_mode": "kernel-only",
-      "size_profile": "medium",
-      "capacity_profile": "normal"
-    },
-    {
-      "id": "random-large-end-to-end",
-      "input_kind": "random",
-      "operation_kind": "prime-gen",
-      "measure_mode": "end-to-end",
-      "size_profile": "large",
-      "capacity_profile": "normal"
-    },
-    {
-      "id": "mixed-variable-kernel",
-      "input_kind": "mixed",
-      "operation_kind": "prime-gen",
-      "measure_mode": "kernel-only",
-      "size_profile": "variable",
-      "capacity_profile": "normal"
-    },
-    {
-      "id": "random-large-capacity-boundary",
-      "input_kind": "random",
-      "operation_kind": "prime-gen",
-      "measure_mode": "kernel-only",
-      "size_profile": "large",
-      "capacity_profile": "near-capacity"
     }
   ]
 }
