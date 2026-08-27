@@ -17,7 +17,7 @@
 ## Пошаговый smoke run
 
 ```bash
-libs/benchmark-framework/build/tools/bench_matrix \
+libs/benchmark-framework/dist/tools/bench_matrix \
   --manifest benchmarks/profiles/bignum_prime_gen_standard.json \
   --output benchmarks/reports/bignum_prime_gen_standard_matrix.json \
   --st-binary bin/bench_bignum_prime_gen \
@@ -37,7 +37,7 @@ Every accepted sample has exactly one machine-readable `benchmark=...` line befo
 ## Aggregation and comparison
 
 ```bash
-libs/benchmark-framework/build/tools/benchmark_stats \
+libs/benchmark-framework/dist/tools/benchmark_stats \
   --input benchmarks/reports/bignum_prime_gen_standard_matrix.json \
   --output benchmarks/reports/bignum_prime_gen_standard_summary.json
 ```

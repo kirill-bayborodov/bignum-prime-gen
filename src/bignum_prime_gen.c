@@ -55,10 +55,6 @@ static void bignum_prime_gen_shape_candidate(bignum_t *candidate, size_t bits)
  * Miller--Rabin, and publishes only a passing candidate. Random-source and
  * primality errors are mapped to named generator statuses; retry exhaustion is
  * reported as BIGNUM_PRIME_GEN_ERROR_PRIMALITY. No heap allocation is used.
- * @param[out] out Caller-allocated output record; NULL is rejected; ownership stays with caller.
- * @param[in] bits Requested bit length in [2, BIGNUM_CAPACITY * 64].
- * @param[in] rounds Positive Miller--Rabin round count passed to dependency.
- * @param[in] max_attempts Positive retry bound; units are candidate attempts.
  * @return Named bignum_prime_gen_status_t; only SUCCESS modifies `*out`.
  * @pre `out` points to a live writable bignum_t and scalar arguments are valid.
  * @post Success gives an odd normalized probable prime with exactly `bits` bits;
